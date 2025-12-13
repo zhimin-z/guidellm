@@ -119,12 +119,12 @@ This document identifies which strategies from the unified evaluation workflow a
 
 ### Step C: Benchmark Preparation (References)
 
-**Strategy 1: Ground Truth Preparation** ⚠️ **PARTIALLY SUPPORTED**
+**Strategy 1: Ground Truth Preparation** ❌ **NOT SUPPORTED**
 
-- GuideLLM can load datasets with reference data in columns
-- However, it does not use ground truth for correctness evaluation
-- Ground truth can be included in datasets but is not actively used for scoring
-- Focus is on performance metrics (latency, throughput) rather than accuracy metrics
+- GuideLLM can load datasets with various columns (including output_tokens_count_column)
+- However, it does not use ground truth, reference answers, or expected outputs for evaluation
+- No comparison of generated outputs against reference data
+- Focus is exclusively on performance metrics (latency, throughput) rather than correctness
 
 **Strategy 2: Judge Preparation** ❌ **NOT SUPPORTED**
 
@@ -169,11 +169,13 @@ This document identifies which strategies from the unified evaluation workflow a
 
 ### Step A: Individual Scoring
 
-**Strategy 1: Deterministic Measurement** ⚠️ **PARTIALLY SUPPORTED**
+**Strategy 1: Deterministic Measurement** ❌ **NOT SUPPORTED**
 
-- GuideLLM does not perform correctness checking (no BLEU, ROUGE, METEOR)
-- Does not compare outputs against ground truth for quality metrics
-- Focus is on performance measurements, not correctness
+- GuideLLM does not perform correctness checking or quality evaluation
+- No support for equality checks, answer extraction, or unit test pass/fail
+- No token-based text metrics (BLEU, ROUGE, METEOR)
+- No distance metrics for comparing outputs against ground truth
+- Focus is exclusively on performance measurement (latency, throughput, token counts)
 
 **Strategy 2: Embedding Measurement** ❌ **NOT SUPPORTED**
 
@@ -219,12 +221,17 @@ This document identifies which strategies from the unified evaluation workflow a
 
 ### Step A: Insight Presentation
 
-**Strategy 1: Execution Tracing** ⚠️ **PARTIALLY SUPPORTED**
+**Strategy 1: Execution Tracing** ✅ **SUPPORTED**
 
-- GuideLLM captures progress and status information during execution
-- Console output shows benchmark progress and intermediate states
-- However, detailed step-by-step execution logs with intermediate computational states are not captured
-- Documented in: [Outputs Guide](./outputs.md#console-output)
+- GuideLLM captures detailed step-by-step execution information for each request
+- Documented in: [Request Statistics](../../src/guidellm/schemas/request_stats.py)
+- Timing data captured includes:
+  - Queue timing (targeted_start, queued, dequeued)
+  - Execution timing (resolve_start, request_start, request_end, resolve_end)
+  - Token-level timing (first_token_iteration, last_token_iteration, token_iterations)
+  - Request iterations and scheduler processing times
+- Request-level statistics saved in JSON/YAML outputs with sampled requests
+- Progress display shows real-time execution state during benchmarks
 
 **Strategy 2: Subgroup Analysis** ❌ **NOT SUPPORTED**
 
@@ -247,13 +254,18 @@ This document identifies which strategies from the unified evaluation workflow a
   - Performance metrics visualizations
 - Parameter: `--outputs html`
 
-**Strategy 5: Dashboard Creation** ⚠️ **PARTIALLY SUPPORTED**
+**Strategy 5: Dashboard Creation** ✅ **SUPPORTED**
 
-- GuideLLM generates HTML reports with tabular data and visualizations
-- However, these are static reports, not interactive web dashboards with filtering
-- No dedicated dashboard server or web interface
-- Reports must be manually opened and viewed
+- GuideLLM provides an interactive web dashboard built with Next.js
 - Documented in: [Outputs Guide](./outputs.md#file-based-outputs)
+- Dashboard features:
+  - Interactive visualizations using Nivo charts (bar, line charts)
+  - Redux-based state management for interactivity
+  - Material-UI components for rich interface
+  - Metric comparisons and result tables
+  - Client-side data exploration and filtering
+- HTML output embeds the full interactive dashboard application
+- Can be served as a standalone web interface
 
 **Strategy 6: Leaderboard Publication** ❌ **NOT SUPPORTED**
 
@@ -263,7 +275,7 @@ This document identifies which strategies from the unified evaluation workflow a
 
 ## Summary
 
-### Supported Strategies: 14 out of 50
+### Supported Strategies: 16 out of 50
 
 GuideLLM is a specialized LLM benchmarking tool focused on performance evaluation of inference endpoints. Its strengths lie in:
 
@@ -282,17 +294,18 @@ GuideLLM is a specialized LLM benchmarking tool focused on performance evaluatio
 11. Performance measurement (latency, throughput, token metrics)
 12. Distributional statistics
 13. Chart generation (HTML reports)
+14. Execution tracing (detailed request-level timing data)
+15. Dashboard creation (interactive Next.js web dashboard)
 
 **Partially Supported (⚠️):**
 
-1. Ground truth preparation (can load but doesn't use for scoring)
-2. Deterministic measurement (performance only, not correctness)
-3. Execution tracing (progress tracking but not detailed traces)
-4. Dashboard creation (static HTML reports, not interactive dashboards)
+None
 
 **Not Supported (❌):**
 
 - Quality/correctness evaluation (no ground truth comparison, embedding metrics, or LLM judges)
+- Ground truth preparation for scoring (can load data but doesn't use for evaluation)
+- Deterministic measurement for correctness (no BLEU, ROUGE, answer checking)
 - Interactive environments and agents
 - Production traffic sampling
 - Multi-SUT comparison (arena battles)
@@ -301,4 +314,4 @@ GuideLLM is a specialized LLM benchmarking tool focused on performance evaluatio
 - Leaderboard submission
 - Advanced analysis (subgroup stratification)
 
-GuideLLM is purpose-built for performance benchmarking of LLM inference servers and excels in measuring latency, throughput, and resource utilization under various load patterns. It is not designed for evaluating model quality, accuracy, or correctness against ground truth references.
+GuideLLM is purpose-built for performance benchmarking of LLM inference servers and excels in measuring latency, throughput, and resource utilization under various load patterns. It captures detailed execution traces and provides interactive dashboards for analysis. However, it is not designed for evaluating model quality, accuracy, or correctness against ground truth references.
