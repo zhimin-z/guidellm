@@ -68,4 +68,12 @@ Whether you're interested in understanding the system architecture, exploring su
 
   [:octicons-arrow-right-24: Over-Saturation Guide](over_saturation_stopping.md)
 
+- :material-check-circle:{ .lg .middle } Unified Evaluation Workflow
+
+  ______________________________________________________________________
+
+  Review which strategies from the unified evaluation workflow across 50+ frameworks are supported natively by GuideLLM.
+
+  [:octicons-arrow-right-24: Workflow Support](unified_evaluation_workflow.md)
+
 </div>
