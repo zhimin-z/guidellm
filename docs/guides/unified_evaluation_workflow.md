@@ -224,7 +224,7 @@ This document identifies which strategies from the unified evaluation workflow a
 **Strategy 1: Execution Tracing** ✅ **SUPPORTED**
 
 - GuideLLM captures detailed step-by-step execution information for each request
-- Documented in: [Request Statistics](../../src/guidellm/schemas/request_stats.py)
+- Source code reference: [request_stats.py](../../src/guidellm/schemas/request_stats.py)
 - Timing data captured includes:
   - Queue timing (targeted_start, queued, dequeued)
   - Execution timing (resolve_start, request_start, request_end, resolve_end)
@@ -275,7 +275,7 @@ This document identifies which strategies from the unified evaluation workflow a
 
 ## Summary
 
-### Supported Strategies: 16 out of 50
+### Supported Strategies: 15 out of 50
 
 GuideLLM is a specialized LLM benchmarking tool focused on performance evaluation of inference endpoints. Its strengths lie in:
 
