@@ -259,7 +259,7 @@ This document identifies which strategies from the unified evaluation workflow a
 - GuideLLM provides an interactive web dashboard built with Next.js
 - Documented in: [Outputs Guide](./outputs.md#file-based-outputs)
 - Dashboard features:
-  - Interactive visualizations using Nivo charts (bar, line charts)
+  - Interactive visualizations using @nivo charts (bar, line charts)
   - Redux-based state management for interactivity
   - Material-UI components for rich interface
   - Metric comparisons and result tables
