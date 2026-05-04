@@ -1,25 +1,4 @@
-"""
-GuideLLM command-line interface entry point.
-
-Primary CLI application providing benchmark execution, dataset preprocessing, and
-mock server functionality for language model evaluation. Organizes commands into
-three main groups: benchmark operations for performance testing, preprocessing
-utilities for data transformation, and mock server capabilities for development
-and testing. Supports multiple backends, output formats, and flexible configuration
-through CLI options and environment variables.
-
-Example:
-::
-    # Run a benchmark against a model
-    guidellm benchmark run --target http://localhost:8000 --data dataset.json \\
-        --profile sweep
-
-    # Preprocess a dataset
-    guidellm preprocess dataset input.json output.json --processor gpt2
-
-    # Start a mock server for testing
-    guidellm mock-server --host 0.0.0.0 --port 8080
-"""
+"""Benchmark run command."""
 
 from __future__ import annotations
 
@@ -30,8 +9,6 @@ from pathlib import Path
 import click
 from pydantic import ValidationError
 
-from guidellm.data import ShortPromptStrategy, process_dataset  # isort: skip
-
 import guidellm.utils.cli as cli_tools
 from guidellm.backends import BackendType
 from guidellm.benchmark import (
@@ -40,36 +17,19 @@ from guidellm.benchmark import (
     ProfileType,
     benchmark_generative_text,
     get_builtin_scenarios,
-    reimport_benchmarks_report,
 )
-from guidellm.mock_server import MockServer, MockServerConfig
 from guidellm.scheduler import StrategyType
-from guidellm.settings import print_config
 from guidellm.utils.console import Console
-from guidellm.utils.default_group import DefaultGroupHandler
 from guidellm.utils.env_validator import validate_env_vars
 from guidellm.utils.typing import get_literal_vals
+
+__all__ = ["STRATEGY_PROFILE_CHOICES", "run"]
 
 STRATEGY_PROFILE_CHOICES: list[str] = list(get_literal_vals(ProfileType | StrategyType))
 """Available strategy and profile type choices for benchmark execution."""
 
 
-@click.group()
-@click.version_option(package_name="guidellm", message="guidellm version: %(version)s")
-def cli():
-    """GuideLLM CLI for benchmarking, preprocessing, and testing language models."""
-
-
-@cli.group(
-    help="Run a benchmark or load a previously saved benchmark report.",
-    cls=DefaultGroupHandler,
-    default="run",
-)
-def benchmark():
-    """Benchmark commands for performance testing generative models."""
-
-
-@benchmark.command(
+@click.command(
     "run",
     help=(
         "Run a benchmark against a generative model. "
@@ -180,19 +140,19 @@ def benchmark():
 )
 @click.option(
     "--processor-args",
-    default=BenchmarkGenerativeTextArgs.get_default("processor_args"),
     callback=cli_tools.parse_arguments,
+    default=BenchmarkGenerativeTextArgs.get_default("processor_args"),
     help="JSON string of arguments to pass to the processor constructor.",
 )
 @click.option(
     "--data-args",
     multiple=True,
     default=BenchmarkGenerativeTextArgs.get_default("data_args"),
-    callback=cli_tools.parse_arguments,
     help="JSON string of arguments to pass to dataset creation.",
 )
 @click.option(
     "--data-samples",
+    callback=cli_tools.parse_arguments,
     default=BenchmarkGenerativeTextArgs.get_default("data_samples"),
     type=int,
     help=(
@@ -202,8 +162,8 @@ def benchmark():
 )
 @click.option(
     "--data-column-mapper",
-    default=BenchmarkGenerativeTextArgs.get_default("data_column_mapper"),
     callback=cli_tools.parse_arguments,
+    default=BenchmarkGenerativeTextArgs.get_default("data_column_mapper"),
     help=(
         "JSON string of column mappings to apply to the dataset. "
         'E.g., \'{"column_mappings": {"text_column": "article", '
@@ -212,8 +172,8 @@ def benchmark():
 )
 @click.option(
     "--data-preprocessors",
-    default=BenchmarkGenerativeTextArgs.get_default("data_preprocessors"),
     callback=cli_tools.parse_arguments,
+    default=BenchmarkGenerativeTextArgs.get_default("data_preprocessors"),
     multiple=True,
     help=(
         "List of of preprocessors to apply to the dataset. E.g., "
@@ -227,8 +187,8 @@ def benchmark():
 )
 @click.option(
     "--data-finalizer",
-    default=BenchmarkGenerativeTextArgs.get_default("data_finalizer"),
     callback=cli_tools.parse_arguments,
+    default=BenchmarkGenerativeTextArgs.get_default("data_finalizer"),
     help=(
         "JSON string of finalizer to convert dataset rows to requests."
         " E.g., 'generative' or '{\"type\": \"generative\"}'"
@@ -248,8 +208,8 @@ def benchmark():
 )
 @click.option(
     "--dataloader-kwargs",
-    default=BenchmarkGenerativeTextArgs.get_default("dataloader_kwargs"),
     callback=cli_tools.parse_arguments,
+    default=BenchmarkGenerativeTextArgs.get_default("dataloader_kwargs"),
     help="JSON string of arguments to pass to the dataloader constructor.",
 )
 @click.option(
@@ -306,8 +266,8 @@ def benchmark():
     "--warmup",
     "--warmup-percent",  # legacy alias
     "warmup",
-    default=BenchmarkGenerativeTextArgs.get_default("warmup"),
     callback=cli_tools.parse_arguments,
+    default=BenchmarkGenerativeTextArgs.get_default("warmup"),
     help=(
         "Warmup specification: int, float, or dict as string "
         "(json or key=value). "
@@ -321,8 +281,8 @@ def benchmark():
     "--cooldown",
     "--cooldown-percent",  # legacy alias
     "cooldown",
-    default=BenchmarkGenerativeTextArgs.get_default("cooldown"),
     callback=cli_tools.parse_arguments,
+    default=BenchmarkGenerativeTextArgs.get_default("cooldown"),
     help=(
         "Cooldown specification: int, float, or dict as string "
         "(json or key=value). "
@@ -484,312 +444,3 @@ def run(**kwargs):  # noqa: C901
             console=console,
         )
     )
-
-
-@benchmark.command(
-    "from-file",
-    help=(
-        "Load a saved benchmark report and optionally re-export to other formats. "
-        "PATH: Path to the saved benchmark report file (default: ./benchmarks.json)."
-    ),
-)
-@click.argument(
-    "path",
-    type=click.Path(file_okay=True, dir_okay=False, exists=True),
-    default=Path.cwd() / "benchmarks.json",
-)
-@click.option(
-    "--output-path",
-    type=click.Path(),
-    default=Path.cwd(),
-    help=(
-        "Directory or file path to save re-exported benchmark results. "
-        "If a directory, all output formats will be saved there. "
-        "If a file, the matching format will be saved to that file."
-    ),
-)
-@click.option(
-    "--output-formats",
-    multiple=True,
-    type=str,
-    default=("console", "json"),  # ("console", "json", "html", "csv")
-    help="Output formats for benchmark results (e.g., console, json, html, csv).",
-)
-def from_file(path, output_path, output_formats):
-    asyncio.run(reimport_benchmarks_report(path, output_path, output_formats))
-
-
-@cli.command(
-    short_help="Show configuration settings.",
-    help="Display environment variables for configuring GuideLLM behavior.",
-)
-def config():
-    print_config()
-
-
-@cli.group(help="Tools for preprocessing datasets for use in benchmarks.")
-def preprocess():
-    """Dataset preprocessing utilities."""
-
-
-@preprocess.command(
-    "dataset",
-    help=(
-        "Process a dataset to have specific prompt and output token sizes. "
-        "Supports multiple strategies for handling prompts and optional "
-        "Hugging Face Hub upload.\n\n"
-        "DATA: Path to the input dataset or dataset ID.\n\n"
-        "OUTPUT_PATH: Path to save the processed dataset, including file suffix."
-    ),
-    context_settings={"auto_envvar_prefix": "GUIDELLM"},
-)
-@click.argument(
-    "data",
-    type=str,
-    required=True,
-)
-@click.argument(
-    "output_path",
-    type=click.Path(file_okay=True, dir_okay=False, writable=True, resolve_path=True),
-    required=True,
-)
-@click.option(
-    "--processor",
-    type=str,
-    required=True,
-    help="Processor or tokenizer name for calculating token counts.",
-)
-@click.option(
-    "--config",
-    type=str,
-    required=True,
-    help=(
-        "PreprocessDatasetConfig as JSON string, key=value pairs, "
-        "or file path (.json, .yaml, .yml, .config). "
-        "Example: 'prompt_tokens=100,output_tokens=50,prefix_tokens_max=10'"
-        ' or \'{"prompt_tokens": 100, "output_tokens": 50, '
-        '"prefix_tokens_max": 10}\''
-    ),
-)
-@click.option(
-    "--processor-args",
-    default=None,
-    callback=cli_tools.parse_arguments,
-    help="JSON string of arguments to pass to the processor constructor.",
-)
-@click.option(
-    "--data-args",
-    callback=cli_tools.parse_arguments,
-    help="JSON string of arguments to pass to dataset creation.",
-)
-@click.option(
-    "--data-column-mapper",
-    default=None,
-    callback=cli_tools.parse_arguments,
-    help="JSON string of column mappings to apply to the dataset.",
-)
-@click.option(
-    "--short-prompt-strategy",
-    type=click.Choice([s.value for s in ShortPromptStrategy]),
-    default=ShortPromptStrategy.IGNORE.value,
-    show_default=True,
-    help="Strategy for handling prompts shorter than target length.",
-)
-@click.option(
-    "--pad-char",
-    type=str,
-    default="",
-    callback=cli_tools.decode_escaped_str,
-    help="Character to pad short prompts with when using 'pad' strategy.",
-)
-@click.option(
-    "--concat-delimiter",
-    type=str,
-    default="",
-    help=(
-        "Delimiter for concatenating short prompts (used with 'concatenate' strategy)."
-    ),
-)
-@click.option(
-    "--include-prefix-in-token-count",
-    is_flag=True,
-    default=False,
-    help="Include prefix tokens in prompt token count calculation.",
-)
-@click.option(
-    "--push-to-hub",
-    is_flag=True,
-    help="Push the processed dataset to Hugging Face Hub.",
-)
-@click.option(
-    "--hub-dataset-id",
-    type=str,
-    default=None,
-    help=("Hugging Face Hub dataset ID for upload (required if --push-to-hub is set)."),
-)
-@click.option(
-    "--random-seed",
-    type=int,
-    default=42,
-    show_default=True,
-    help="Random seed for reproducible token sampling.",
-)
-def dataset(
-    data,
-    output_path,
-    processor,
-    config,
-    processor_args,
-    data_args,
-    data_column_mapper,
-    short_prompt_strategy,
-    pad_char,
-    concat_delimiter,
-    include_prefix_in_token_count,
-    push_to_hub,
-    hub_dataset_id,
-    random_seed,
-):
-    process_dataset(
-        data=data,
-        output_path=output_path,
-        processor=processor,
-        config=config,
-        processor_args=processor_args,
-        data_args=data_args,
-        data_column_mapper=data_column_mapper,
-        short_prompt_strategy=short_prompt_strategy,
-        pad_char=pad_char,
-        concat_delimiter=concat_delimiter,
-        include_prefix_in_token_count=include_prefix_in_token_count,
-        push_to_hub=push_to_hub,
-        hub_dataset_id=hub_dataset_id,
-        random_seed=random_seed,
-    )
-
-
-@cli.command(
-    "mock-server",
-    help=(
-        "Start a mock OpenAI/vLLM-compatible server for testing. "
-        "Simulates model inference with configurable latency and token generation."
-    ),
-)
-@click.option(
-    "--host",
-    default="127.0.0.1",
-    help="Host address to bind the server to.",
-)
-@click.option(
-    "--port",
-    default=8000,
-    type=int,
-    help="Port number to bind the server to.",
-)
-@click.option(
-    "--workers",
-    default=1,
-    type=int,
-    help="Number of worker processes.",
-)
-@click.option(
-    "--model",
-    default="llama-3.1-8b-instruct",
-    help="Name of the model to mock.",
-)
-@click.option(
-    "--processor",
-    default=None,
-    help="Processor or tokenizer to use for requests.",
-)
-@click.option(
-    "--request-latency",
-    default=3,
-    type=float,
-    help="Request latency in seconds for non-streaming requests.",
-)
-@click.option(
-    "--request-latency-std",
-    default=0,
-    type=float,
-    help="Request latency standard deviation in seconds (normal distribution).",
-)
-@click.option(
-    "--ttft-ms",
-    default=150,
-    type=float,
-    help="Time to first token in milliseconds for streaming requests.",
-)
-@click.option(
-    "--ttft-ms-std",
-    default=0,
-    type=float,
-    help="Time to first token standard deviation in milliseconds.",
-)
-@click.option(
-    "--itl-ms",
-    default=10,
-    type=float,
-    help="Inter-token latency in milliseconds for streaming requests.",
-)
-@click.option(
-    "--itl-ms-std",
-    default=0,
-    type=float,
-    help="Inter-token latency standard deviation in milliseconds.",
-)
-@click.option(
-    "--output-tokens",
-    default=128,
-    type=int,
-    help="Number of output tokens for streaming requests.",
-)
-@click.option(
-    "--output-tokens-std",
-    default=0,
-    type=float,
-    help="Output tokens standard deviation (normal distribution).",
-)
-def mock_server(
-    host: str,
-    port: int,
-    workers: int,
-    model: str,
-    processor: str | None,
-    request_latency: float,
-    request_latency_std: float,
-    ttft_ms: float,
-    ttft_ms_std: float,
-    itl_ms: float,
-    itl_ms_std: float,
-    output_tokens: int,
-    output_tokens_std: float,
-):
-    config = MockServerConfig(
-        host=host,
-        port=port,
-        workers=workers,
-        model=model,
-        processor=processor,
-        request_latency=request_latency,
-        request_latency_std=request_latency_std,
-        ttft_ms=ttft_ms,
-        ttft_ms_std=ttft_ms_std,
-        itl_ms=itl_ms,
-        itl_ms_std=itl_ms_std,
-        output_tokens=output_tokens,
-        output_tokens_std=output_tokens_std,
-    )
-
-    server = MockServer(config)
-    console = Console()
-    console.print_update(
-        title="GuideLLM mock server starting...",
-        details=f"Listening on http://{host}:{port} for model {model}",
-        status="success",
-    )
-    server.run()
-
-
-if __name__ == "__main__":
-    cli()
