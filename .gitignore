@@ -187,10 +187,18 @@ cython_debug/
 !src/guidellm/benchmark/scenarios/*.yaml
 
 ## AI
-# Ignore any AI memory file except for AGENTS.md
+# Ignore any AI memory files except for AGENTS.md
 
-# Claude code files
+# Claude code
 CLAUDE.*
+.claude/
+
+# Cursor
+.cursor/
+.cursorrules/
+
+# Gemini CLI
+.gemini/
 
 # UI Section - Next.js/React application under src/ui/
 # dependencies
