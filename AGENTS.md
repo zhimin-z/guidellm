@@ -61,7 +61,7 @@ tox -e tests -- -m regression
 
 ### Test Requirements
 
-- **IMPORTANT**: Every test function written by AI must have `### WRITTEN BY AI ###` at the end of its docstring.
+- **IMPORTANT**: Every test function written by AI must have `## WRITTEN BY AI ##` at the end of its docstring.
 - Use appropriate markers (`smoke`, `sanity`, `regression`)
 - Tests should be placed in files matching the name and path of the file under tests. E.g. `src/guidellm/benchmark/schemas/generative/entrypoints.py` -> `tests/unit/benchmark/schemas/generative/test_entrypoints.py`.
 
@@ -77,12 +77,15 @@ tox -e tests -- -m regression
 
 ### Running Benchmarks
 
+Running benchmarks requires an active model server. Here are some example commands:
+
 ```bash
 # Quick sweep benchmark
 uv run guidellm benchmark run \
   --target http://localhost:8000 \
   --profile sweep \
-  --data "prompt_tokens=256,output_tokens=128"
+  --data "prompt_tokens=256,output_tokens=128" \
+  --min-requests 1000
 
 # Production-like benchmark with specific dataset
 uv run guidellm benchmark run \
