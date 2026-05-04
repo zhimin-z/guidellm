@@ -1,10 +1,10 @@
 # AGENTS.md
 
-This file provides agents and LLMs guidance on development practices within the GuideLLM repository.
+This file provides agents and LLMs with guidance on development practices within the GuideLLM repository.
 
 > **NOTE TO AI**: This file is human maintained and **SHALL NOT** be edited by agents or any LLM.
 
-> **NOTE TO HUMANS** This file should be kept brief as it is loaded into every AI context.
+> **NOTE TO HUMANS**: This file should be kept brief as it is loaded into every AI context.
 
 ## Development Commands
 
@@ -71,7 +71,7 @@ tox -e tests -- -m regression
 - All Python code must pass type checking
 - All tests must pass before committing
 - Markdown files must be properly formatted
-- All functions must use the reStructuredText docstring format
+- Public functions in `src/` code must use the reStructuredText docstring format
 
 ## Common Tasks
 
