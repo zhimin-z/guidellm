@@ -1,8 +1,8 @@
-## WRITTEN BY AI ##
-import asyncio
 import csv
 from pathlib import Path
 from types import SimpleNamespace
+
+import pytest
 
 from guidellm.benchmark.outputs.csv import GenerativeBenchmarkerCSV
 
@@ -14,11 +14,6 @@ def _make_report(benchmarks):
         metadata=SimpleNamespace(model_dump_json=lambda: "{}"),
         args=SimpleNamespace(model_dump_json=lambda: "{}"),
     )
-
-
-def _finalize_sync(out, report):
-    """Run the async CSV finalizer in a synchronous test context."""
-    return asyncio.run(out.finalize(report))
 
 
 def _make_csv_output(tmp_path: Path, benchmarks):
@@ -48,8 +43,14 @@ def _make_csv_output(tmp_path: Path, benchmarks):
     return out, report
 
 
-def test_headers_merge_and_order(tmp_path: Path):
-    """Ensure headers from multiple benchmarks are merged in first-seen order."""
+@pytest.mark.asyncio
+@pytest.mark.regression
+async def test_headers_merge_and_order(tmp_path: Path):
+    """
+    Ensure headers from multiple benchmarks are merged in first-seen order.
+
+    ### WRITTEN BY AI ###
+    """
     bench1 = SimpleNamespace(
         _test_fields=[
             (("GroupA", "Field1", ""), "v1"),
@@ -65,7 +66,7 @@ def test_headers_merge_and_order(tmp_path: Path):
     )
 
     out, report = _make_csv_output(tmp_path, [bench1, bench2])
-    path = _finalize_sync(out, report)
+    path = await out.finalize(report)
 
     rows = list(csv.reader(path.open()))
     header_rows = rows[:3]
@@ -81,17 +82,52 @@ def test_headers_merge_and_order(tmp_path: Path):
     ]
 
 
-def test_values_alignment(tmp_path: Path):
-    """Ensure missing columns are written as blanks for each aligned row."""
+@pytest.mark.asyncio
+@pytest.mark.regression
+async def test_values_alignment(tmp_path: Path):
+    """
+    Ensure missing columns are written as blanks for each aligned row.
+
+    ### WRITTEN BY AI ###
+    """
     bench1 = SimpleNamespace(
         _test_fields=[(("G", "A", ""), "a"), (("G", "B", ""), "b")]
     )
     bench2 = SimpleNamespace(_test_fields=[(("G", "A", ""), "a2")])
 
     out, report = _make_csv_output(tmp_path, [bench1, bench2])
-    path = _finalize_sync(out, report)
+    path = await out.finalize(report)
     rows = list(csv.reader(path.open()))
     data_rows = rows[3:]
 
     assert data_rows[0] == ["a", "b"]
     assert data_rows[1] == ["a2", ""]
+
+
+@pytest.mark.asyncio
+@pytest.mark.regression
+async def test_first_benchmark_missing_columns(tmp_path: Path):
+    """
+    When the first benchmark lacks columns that the second has, those columns
+    should still appear in the output and the first row gets blank values.
+
+    ### WRITTEN BY AI ###
+    """
+    bench1 = SimpleNamespace(_test_fields=[(("G", "A", ""), "a1")])
+    bench2 = SimpleNamespace(
+        _test_fields=[(("G", "A", ""), "a2"), (("G", "B", ""), "b2")]
+    )
+
+    out, report = _make_csv_output(tmp_path, [bench1, bench2])
+    path = await out.finalize(report)
+    rows = list(csv.reader(path.open()))
+    header_rows = rows[:3]
+    data_rows = rows[3:]
+
+    reconstructed = [
+        tuple(col[i] for col in header_rows) for i in range(len(header_rows[0]))
+    ]
+
+    assert reconstructed == [("G", "A", ""), ("G", "B", "")]
+    assert data_rows[0] == ["a1", ""]
+    assert data_rows[1] == ["a2", "b2"]
