@@ -163,7 +163,7 @@ async def test_finalize_aligns_columns_in_written_csv(tmp_path: Path):
     Integration test: finalize writes a CSV where all rows (headers + data)
     have the same column count, even when benchmarks produce different columns.
 
-    Uses monkeypatching to control the column shape without constructing full
+    Uses patching to control the column shape without constructing full
     benchmark objects.
 
     ## WRITTEN BY AI ##
