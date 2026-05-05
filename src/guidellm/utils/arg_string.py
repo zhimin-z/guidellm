@@ -123,7 +123,7 @@ class ArgStringParser:
                 if self.skip_invalid:
                     continue
                 raise ArgStringParseError(
-                    f"Invalid key=value expression at {idx}:\n'{s}'"
+                    f"Invalid key=value expression at {idx}: '{s}'"
                 )
 
             key_raw, value_raw = pair.split("=", 1)
@@ -135,7 +135,7 @@ class ArgStringParser:
                 if self.skip_invalid:
                     continue
                 raise ArgStringParseError(
-                    f"Empty key in key=value expression at {idx}:\n'{s}'"
+                    f"Empty key in key=value expression at {idx}: '{s}'"
                 )
 
             # Parse the key into segments
