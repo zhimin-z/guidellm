@@ -7,21 +7,181 @@ import pytest
 from guidellm.benchmark.outputs.csv import GenerativeBenchmarkerCSV
 
 
-def _make_report(benchmarks):
-    """Build a minimal benchmark report for CSV output tests."""
-    return SimpleNamespace(
-        benchmarks=benchmarks,
+class TestAlignColumns:
+    """
+    Tests for _align_columns ensuring correct column merging and alignment
+    when benchmarks have different sets of metrics.
+
+    ## WRITTEN BY AI ##
+    """
+
+    @pytest.mark.regression
+    def test_headers_merge_in_first_seen_order(self):
+        """
+        Headers from multiple benchmarks are merged preserving first-seen order,
+        producing the union of all columns.
+
+        ## WRITTEN BY AI ##
+        """
+        headers_b1 = [["GroupA", "Field1", ""], ["GroupB", "Field2", ""]]
+        headers_b2 = [["GroupA", "Field1", ""], ["GroupC", "Field3", ""]]
+        values_b1 = ["v1", "v2"]
+        values_b2 = ["v1_b2", "v3"]
+
+        headers, rows = GenerativeBenchmarkerCSV._align_columns(
+            [headers_b1, headers_b2], [values_b1, values_b2]
+        )
+
+        assert headers == [
+            ["GroupA", "Field1", ""],
+            ["GroupB", "Field2", ""],
+            ["GroupC", "Field3", ""],
+        ]
+        assert rows[0] == ["v1", "v2", ""]
+        assert rows[1] == ["v1_b2", "", "v3"]
+
+    @pytest.mark.regression
+    def test_missing_columns_filled_with_empty_string(self):
+        """
+        When the second benchmark is missing a column the first has, that
+        position is filled with an empty string.
+
+        ## WRITTEN BY AI ##
+        """
+        headers_b1 = [["G", "A", ""], ["G", "B", ""]]
+        headers_b2 = [["G", "A", ""]]
+        values_b1 = ["a", "b"]
+        values_b2 = ["a2"]
+
+        headers, rows = GenerativeBenchmarkerCSV._align_columns(
+            [headers_b1, headers_b2], [values_b1, values_b2]
+        )
+
+        assert headers == [["G", "A", ""], ["G", "B", ""]]
+        assert rows[0] == ["a", "b"]
+        assert rows[1] == ["a2", ""]
+
+    @pytest.mark.regression
+    def test_first_benchmark_missing_columns(self):
+        """
+        When the first benchmark lacks columns that the second has, those
+        columns are appended and the first row gets empty strings.
+
+        ## WRITTEN BY AI ##
+        """
+        headers_b1 = [["G", "A", ""]]
+        headers_b2 = [["G", "A", ""], ["G", "B", ""]]
+        values_b1 = ["a1"]
+        values_b2 = ["a2", "b2"]
+
+        headers, rows = GenerativeBenchmarkerCSV._align_columns(
+            [headers_b1, headers_b2], [values_b1, values_b2]
+        )
+
+        assert headers == [["G", "A", ""], ["G", "B", ""]]
+        assert rows[0] == ["a1", ""]
+        assert rows[1] == ["a2", "b2"]
+
+    @pytest.mark.regression
+    def test_identical_columns_no_padding(self):
+        """
+        When all benchmarks have the same columns, no padding is needed.
+
+        ## WRITTEN BY AI ##
+        """
+        headers_b1 = [["G", "X", ""], ["G", "Y", ""]]
+        headers_b2 = [["G", "X", ""], ["G", "Y", ""]]
+        values_b1 = ["1", "2"]
+        values_b2 = ["3", "4"]
+
+        headers, rows = GenerativeBenchmarkerCSV._align_columns(
+            [headers_b1, headers_b2], [values_b1, values_b2]
+        )
+
+        assert headers == [["G", "X", ""], ["G", "Y", ""]]
+        assert rows[0] == ["1", "2"]
+        assert rows[1] == ["3", "4"]
+
+    @pytest.mark.smoke
+    def test_empty_benchmarks_list(self):
+        """
+        No benchmarks produces empty headers and no data rows.
+
+        ## WRITTEN BY AI ##
+        """
+        headers, rows = GenerativeBenchmarkerCSV._align_columns([], [])
+        assert headers == []
+        assert rows == []
+
+    @pytest.mark.smoke
+    def test_single_benchmark(self):
+        """
+        A single benchmark returns its headers and values unchanged.
+
+        ## WRITTEN BY AI ##
+        """
+        headers_b1 = [["A", "B", "C"], ["D", "E", "F"]]
+        values_b1 = [10, 20]
+
+        headers, rows = GenerativeBenchmarkerCSV._align_columns(
+            [headers_b1], [values_b1]
+        )
+
+        assert headers == [["A", "B", "C"], ["D", "E", "F"]]
+        assert rows == [[10, 20]]
+
+    @pytest.mark.regression
+    def test_three_benchmarks_disjoint_columns(self):
+        """
+        Three benchmarks each with unique columns produces the full union
+        with correct empty-fill for each row.
+
+        ## WRITTEN BY AI ##
+        """
+        headers_b1 = [["G", "A", ""]]
+        headers_b2 = [["G", "B", ""]]
+        headers_b3 = [["G", "C", ""]]
+        values_b1 = ["a"]
+        values_b2 = ["b"]
+        values_b3 = ["c"]
+
+        headers, rows = GenerativeBenchmarkerCSV._align_columns(
+            [headers_b1, headers_b2, headers_b3],
+            [values_b1, values_b2, values_b3],
+        )
+
+        assert headers == [["G", "A", ""], ["G", "B", ""], ["G", "C", ""]]
+        assert rows[0] == ["a", "", ""]
+        assert rows[1] == ["", "b", ""]
+        assert rows[2] == ["", "", "c"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.sanity
+async def test_finalize_aligns_columns_in_written_csv(tmp_path: Path):
+    """
+    Integration test: finalize writes a CSV where all rows (headers + data)
+    have the same column count, even when benchmarks produce different columns.
+
+    Uses patching to control the column shape without constructing full
+    benchmark objects.
+
+    ## WRITTEN BY AI ##
+    """
+    report = SimpleNamespace(
+        benchmarks=[
+            SimpleNamespace(_test_fields=[(("G", "A", ""), "a1")]),
+            SimpleNamespace(
+                _test_fields=[(("G", "A", ""), "a2"), (("G", "B", ""), "b2")]
+            ),
+        ],
         metadata=SimpleNamespace(model_dump_json=lambda: "{}"),
         args=SimpleNamespace(model_dump_json=lambda: "{}"),
     )
 
-
-def _make_csv_output(tmp_path: Path, benchmarks):
-    """Create a CSV output instance with only the fields this test needs."""
-    report = _make_report(benchmarks)
     out = GenerativeBenchmarkerCSV(output_path=tmp_path)
 
-    # Disable unrelated metric emitters so the test controls the output shape.
+    # Stub all emitters except _add_run_info so we control column shape
     for name in [
         "_add_benchmark_info",
         "_add_timing_info",
@@ -40,94 +200,17 @@ def _make_csv_output(tmp_path: Path, benchmarks):
             values.append(val)
 
     out._add_run_info = _add_run_info.__get__(out, out.__class__)
-    return out, report
 
-
-@pytest.mark.asyncio
-@pytest.mark.regression
-async def test_headers_merge_and_order(tmp_path: Path):
-    """
-    Ensure headers from multiple benchmarks are merged in first-seen order.
-
-    ### WRITTEN BY AI ###
-    """
-    bench1 = SimpleNamespace(
-        _test_fields=[
-            (("GroupA", "Field1", ""), "v1"),
-            (("GroupB", "Field2", ""), "v2"),
-        ]
-    )
-
-    bench2 = SimpleNamespace(
-        _test_fields=[
-            (("GroupA", "Field1", ""), "v1_b2"),
-            (("GroupC", "Field3", ""), "v3"),
-        ]
-    )
-
-    out, report = _make_csv_output(tmp_path, [bench1, bench2])
     path = await out.finalize(report)
 
     rows = list(csv.reader(path.open()))
-    header_rows = rows[:3]
+    assert len(rows) == 5  # 3 header rows + 2 data rows
 
-    reconstructed = [
-        tuple(col[i] for col in header_rows) for i in range(len(header_rows[0]))
-    ]
+    # All rows must have the same column count
+    col_counts = {len(row) for row in rows}
+    assert len(col_counts) == 1, f"Expected uniform column count, got {col_counts}"
 
-    assert reconstructed == [
-        ("GroupA", "Field1", ""),
-        ("GroupB", "Field2", ""),
-        ("GroupC", "Field3", ""),
-    ]
-
-
-@pytest.mark.asyncio
-@pytest.mark.regression
-async def test_values_alignment(tmp_path: Path):
-    """
-    Ensure missing columns are written as blanks for each aligned row.
-
-    ### WRITTEN BY AI ###
-    """
-    bench1 = SimpleNamespace(
-        _test_fields=[(("G", "A", ""), "a"), (("G", "B", ""), "b")]
-    )
-    bench2 = SimpleNamespace(_test_fields=[(("G", "A", ""), "a2")])
-
-    out, report = _make_csv_output(tmp_path, [bench1, bench2])
-    path = await out.finalize(report)
-    rows = list(csv.reader(path.open()))
+    # Data row for first benchmark should have blank in column B
     data_rows = rows[3:]
-
-    assert data_rows[0] == ["a", "b"]
-    assert data_rows[1] == ["a2", ""]
-
-
-@pytest.mark.asyncio
-@pytest.mark.regression
-async def test_first_benchmark_missing_columns(tmp_path: Path):
-    """
-    When the first benchmark lacks columns that the second has, those columns
-    should still appear in the output and the first row gets blank values.
-
-    ### WRITTEN BY AI ###
-    """
-    bench1 = SimpleNamespace(_test_fields=[(("G", "A", ""), "a1")])
-    bench2 = SimpleNamespace(
-        _test_fields=[(("G", "A", ""), "a2"), (("G", "B", ""), "b2")]
-    )
-
-    out, report = _make_csv_output(tmp_path, [bench1, bench2])
-    path = await out.finalize(report)
-    rows = list(csv.reader(path.open()))
-    header_rows = rows[:3]
-    data_rows = rows[3:]
-
-    reconstructed = [
-        tuple(col[i] for col in header_rows) for i in range(len(header_rows[0]))
-    ]
-
-    assert reconstructed == [("G", "A", ""), ("G", "B", "")]
     assert data_rows[0] == ["a1", ""]
     assert data_rows[1] == ["a2", "b2"]
