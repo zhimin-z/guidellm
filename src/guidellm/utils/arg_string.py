@@ -116,23 +116,27 @@ class ArgStringParser:
         # Split by commas
         pairs = s.split(self.split_delimiter)
 
-        for pair_raw in pairs:
-            pair_stripped = pair_raw.strip()
+        for idx, pair_raw in enumerate(pairs):
+            pair = pair_raw.strip()
             # Handle invalid pairs
-            if not pair_stripped or "=" not in pair_stripped:
+            if not pair or "=" not in pair:
                 if self.skip_invalid:
                     continue
-                raise ArgStringParseError(f"Invalid key=value pair: '{pair_raw}'")
+                raise ArgStringParseError(
+                    f"Invalid key=value expression at {idx}:\n'{s}'"
+                )
 
-            key, value = pair_stripped.split("=", 1)
-            key = key.strip()
-            value = value.strip()
+            key_raw, value_raw = pair.split("=", 1)
+            key = key_raw.strip()
+            value = value_raw.strip()
 
             # Handle empty keys
             if not key:
                 if self.skip_invalid:
                     continue
-                raise ArgStringParseError(f"Empty key in pair: '{pair_raw}'")
+                raise ArgStringParseError(
+                    f"Empty key in key=value expression at {idx}:\n'{s}'"
+                )
 
             # Parse the key into segments
             segments = self._parse_key(key)
@@ -214,8 +218,9 @@ class ArgStringParser:
         # Split by dots first
         parts = key.split(self.key_delimiter)
 
-        for part in parts:
+        for part_raw in parts:
             # Check if part has array notation: name[index]
+            part = part_raw.strip()
             match = re.match(r"^([^\[]+)\[(\d+)\]$", part)
             if match:
                 name = match.group(1)
