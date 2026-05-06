@@ -410,9 +410,9 @@ class TestArgStringLoads:
         """
         with pytest.raises(
             arg_string.ArgStringParseError,
-            match="Invalid key=value pair",
+            match="Invalid key=value expression at 1:",
         ):
-            arg_string.loads("invalidpair,key=value2")
+            arg_string.loads("key=value2,invalidpair")
 
     @pytest.mark.regression
     def test_invalid_key_pair_skip(self):
@@ -437,9 +437,9 @@ class TestArgStringLoads:
         """
         with pytest.raises(
             arg_string.ArgStringParseError,
-            match="Empty key in pair",
+            match="Empty key in key=value expression at 1:",
         ):
-            arg_string.loads("=value,key=value2")
+            arg_string.loads("key=value2,=value")
 
     @pytest.mark.regression
     def test_empty_key_skip(self):
